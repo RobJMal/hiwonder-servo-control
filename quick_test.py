@@ -33,7 +33,7 @@ def test_servo_simultaneous() -> None:
 
     # Moving to separate positions
     servo_bus.move_time_wait_write(1, 90, 0)    # Set servo 1 to move to 45 degrees, but wait for the start command
-    servo_bus.move_time_wait_write(2, 180, 0)   # Set servo 2 to move to 90 degrees, but wait for the start command
+    servo_bus.move_time_wait_write(2, 120, 0)   # Set servo 2 to move to 90 degrees, but wait for the start command
     servo_bus.move_start(254)                   # Send move_start command to both servos simultaneously (broadcast ID 254)
 
     # Setting back to 0 point
@@ -44,6 +44,6 @@ def test_servo_simultaneous() -> None:
     print("Finished Test: Testing servo simultaneously")
 
 if __name__ == '__main__':
-    # test_servo_individual()
-    # time.sleep(1)
+    test_servo_individual()
+    time.sleep(1)
     test_servo_simultaneous()
