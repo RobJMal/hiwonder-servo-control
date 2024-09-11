@@ -90,6 +90,9 @@ class ServoControllerApp:
         self.servo1_position = 0
         self.servo2_position = 0
 
+        # Start continuously printing the servo positions
+        self.print_servo_positions()
+
     def move_servo_1(self, position):
         """Move Servo 1 based on slider value."""
         position = int(position)
@@ -179,6 +182,23 @@ class ServoControllerApp:
         # Update positions
         self.servo1_position = new_servo1_position
         self.servo2_position = new_servo2_position
+
+    def print_servo_positions(self):
+        """Continuously read and print the positions of both servos."""
+        try:
+            # Read positions from the servos
+            servo1_pos = self.servo_bus.get_servo(1).pos_read()
+            servo2_pos = self.servo_bus.get_servo(2).pos_read()
+
+            # Print the positions to the terminal
+            print(f"Servo 1 Position: {servo1_pos}, Servo 2 Position: {servo2_pos}")
+            
+        except Exception as e:
+            # Handle any error in communication
+            print(f"Error reading servo positions: {e}")
+
+        # Schedule the next read after 1000 ms (1 second)
+        self.root.after(100, self.print_servo_positions)
 
 def main():
     # Initialize the tkinter root window
