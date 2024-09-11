@@ -15,8 +15,9 @@ class ServoControllerApp:
         self.servo_angle_limit_min = 0
         self.servo_angle_limit_max = 240
         
-        # Track the previous value of the relative slider
-        self.previous_relative_value = 0
+        # Default deltas
+        self.relative_servo1_delta = 5  # Default delta for servo 1
+        self.relative_servo2_delta = 5  # Default delta for servo 2
         
         # GUI Elements
         self.create_widgets()
@@ -47,16 +48,39 @@ class ServoControllerApp:
                                       command=self.move_servo_2)
         self.servo2_slider.pack()
 
-        # Slider to adjust both servos simultaneously
-        self.relative_slider_label = tk.Label(self.root, text="Move Both Servos by (Relative Movement)")
-        self.relative_slider_label.pack()
+        # Sliders to adjust delta for each servo
+        self.relative_servo1_label = tk.Label(self.root, text="Set Delta for Servo 1")
+        self.relative_servo1_label.pack()
 
-        self.relative_slider = tk.Scale(self.root, 
-                                        from_=-90, 
-                                        to=90, 
-                                        orient="horizontal", 
-                                        command=self.move_both_servos)
-        self.relative_slider.pack()
+        self.relative_servo1_slider = tk.Scale(self.root, 
+                                               from_=1,  # Positive delta only
+                                               to=20, 
+                                               orient="horizontal", 
+                                               command=self.update_deltas)
+        self.relative_servo1_slider.pack()
+
+        self.relative_servo2_label = tk.Label(self.root, text="Set Delta for Servo 2")
+        self.relative_servo2_label.pack()
+
+        self.relative_servo2_slider = tk.Scale(self.root, 
+                                               from_=1,  # Positive delta only
+                                               to=20, 
+                                               orient="horizontal", 
+                                               command=self.update_deltas)
+        self.relative_servo2_slider.pack()
+
+        # Buttons to move servos
+        self.positive_button = tk.Button(self.root, text="Move Positive", command=self.move_positive)
+        self.positive_button.pack()
+
+        self.negative_button = tk.Button(self.root, text="Move Negative", command=self.move_negative)
+        self.negative_button.pack()
+
+        self.servo1_positive_servo2_negative_button = tk.Button(self.root, text="Servo 1 Positive, Servo 2 Negative", command=self.move_servo1_positive_servo2_negative)
+        self.servo1_positive_servo2_negative_button.pack()
+
+        self.servo1_negative_servo2_positive_button = tk.Button(self.root, text="Servo 1 Negative, Servo 2 Positive", command=self.move_servo1_negative_servo2_positive)
+        self.servo1_negative_servo2_positive_button.pack()
 
     def initialize_servos(self):
         # Set both servos to 0 degrees initially
@@ -65,7 +89,6 @@ class ServoControllerApp:
         self.servo_bus.move_start(254)
         self.servo1_position = 0
         self.servo2_position = 0
-        self.previous_relative_value = 0  # Reset the relative slider's previous value
 
     def move_servo_1(self, position):
         """Move Servo 1 based on slider value."""
@@ -79,29 +102,81 @@ class ServoControllerApp:
         self.servo_bus.move_time_write(2, position, 0.2)  # Move servo 2 to the slider's position
         self.servo2_position = position  # Update the current position
 
-    def move_both_servos(self, new_relative_value):
-        """Move both servos by a relative amount."""
-        new_relative_value = int(new_relative_value)
+    def update_deltas(self, _=None):
+        """Update the deltas based on sliders for servo1 and servo2."""
+        # Update deltas for both servos
+        self.relative_servo1_delta = int(self.relative_servo1_slider.get())
+        self.relative_servo2_delta = int(self.relative_servo2_slider.get())
 
-        # Calculate the delta (difference) between the current and previous slider value
-        delta_position = new_relative_value - self.previous_relative_value
+    def move_positive(self):
+        """Move both servos in the positive direction."""
+        # Calculate new positions by adding the delta
+        new_servo1_position = self.servo1_position + self.relative_servo1_delta
+        new_servo2_position = self.servo2_position + self.relative_servo2_delta
 
-        # Update the previous slider value
-        self.previous_relative_value = new_relative_value
-        
-        # Calculate new positions for both servos
-        new_servo1_position = self.servo1_position + delta_position
-        new_servo2_position = self.servo2_position + delta_position
-        
-        # Constrain the positions within 0-180 degrees
-        new_servo1_position = max(0, min(180, new_servo1_position))
-        new_servo2_position = max(0, min(180, new_servo2_position))
-        
-        # Move both servos to the new positions
+        # Constrain the positions within the servo's angle limits
+        new_servo1_position = max(self.servo_angle_limit_min, min(self.servo_angle_limit_max, new_servo1_position))
+        new_servo2_position = max(self.servo_angle_limit_min, min(self.servo_angle_limit_max, new_servo2_position))
+
+        # Move both servos
         self.servo_bus.move_time_write(1, new_servo1_position, 0.2)
         self.servo_bus.move_time_write(2, new_servo2_position, 0.2)
-        
-        # Update the positions
+
+        # Update positions
+        self.servo1_position = new_servo1_position
+        self.servo2_position = new_servo2_position
+
+    def move_negative(self):
+        """Move both servos in the negative direction."""
+        # Calculate new positions by subtracting the delta
+        new_servo1_position = self.servo1_position - self.relative_servo1_delta
+        new_servo2_position = self.servo2_position - self.relative_servo2_delta
+
+        # Constrain the positions within the servo's angle limits
+        new_servo1_position = max(self.servo_angle_limit_min, min(self.servo_angle_limit_max, new_servo1_position))
+        new_servo2_position = max(self.servo_angle_limit_min, min(self.servo_angle_limit_max, new_servo2_position))
+
+        # Move both servos
+        self.servo_bus.move_time_write(1, new_servo1_position, 0.2)
+        self.servo_bus.move_time_write(2, new_servo2_position, 0.2)
+
+        # Update positions
+        self.servo1_position = new_servo1_position
+        self.servo2_position = new_servo2_position
+
+    def move_servo1_positive_servo2_negative(self):
+        """Move Servo 1 in the positive direction and Servo 2 in the negative direction."""
+        # Calculate new positions
+        new_servo1_position = self.servo1_position + self.relative_servo1_delta
+        new_servo2_position = self.servo2_position - self.relative_servo2_delta
+
+        # Constrain the positions within the servo's angle limits
+        new_servo1_position = max(self.servo_angle_limit_min, min(self.servo_angle_limit_max, new_servo1_position))
+        new_servo2_position = max(self.servo_angle_limit_min, min(self.servo_angle_limit_max, new_servo2_position))
+
+        # Move both servos
+        self.servo_bus.move_time_write(1, new_servo1_position, 0.2)
+        self.servo_bus.move_time_write(2, new_servo2_position, 0.2)
+
+        # Update positions
+        self.servo1_position = new_servo1_position
+        self.servo2_position = new_servo2_position
+
+    def move_servo1_negative_servo2_positive(self):
+        """Move Servo 1 in the negative direction and Servo 2 in the positive direction."""
+        # Calculate new positions
+        new_servo1_position = self.servo1_position - self.relative_servo1_delta
+        new_servo2_position = self.servo2_position + self.relative_servo2_delta
+
+        # Constrain the positions within the servo's angle limits
+        new_servo1_position = max(self.servo_angle_limit_min, min(self.servo_angle_limit_max, new_servo1_position))
+        new_servo2_position = max(self.servo_angle_limit_min, min(self.servo_angle_limit_max, new_servo2_position))
+
+        # Move both servos
+        self.servo_bus.move_time_write(1, new_servo1_position, 0.2)
+        self.servo_bus.move_time_write(2, new_servo2_position, 0.2)
+
+        # Update positions
         self.servo1_position = new_servo1_position
         self.servo2_position = new_servo2_position
 
